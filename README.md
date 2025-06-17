@@ -1,0 +1,140 @@
+# API
+
+A new Flutter project.
+
+## Getting Started
+
+This project is a starting point for a Flutter application.
+
+A few resources to get you started if this is your first Flutter project:
+
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+
+
+
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+void main() {
+runApp(MyApp());
+}
+class MyApp extends StatelessWidget {
+@override
+Widget build(BuildContext context) {
+return MaterialApp(
+debugShowCheckedModeBanner: false,
+home: UserScreen(),
+);
+}
+}
+
+class UserScreen extends StatefulWidget {
+@override
+_UserScreenState createState() => _UserScreenState();
+}
+
+class _UserScreenState extends State<UserScreen> {
+final String apiUrl = "https://67d24da490e0670699bcfef5.mockapi.io/vidu/vidu";
+final TextEditingController nameController = TextEditingController();
+final TextEditingController emailController = TextEditingController();
+List<Map<String, dynamic>> users = [];
+String? editingUserId;
+@override
+void initState() {
+super.initState();
+fetchUsers();
+}
+
+void fetchUsers() async {
+final response = await http.get(Uri.parse(apiUrl));
+if (response.statusCode == 200) {
+setState(() {
+users = List<Map<String, dynamic>>.from(json.decode(response.body));
+});
+}
+}
+
+void addOrUpdateUser() async {
+final body = {"name": nameController.text, "email": emailController.text};
+if (editingUserId == null) {
+await http.post(Uri.parse(apiUrl),
+headers: {"Content-Type": "application/json"},
+body: json.encode(body));
+} else {
+await http.put(Uri.parse("$apiUrl/$editingUserId"),
+headers: {"Content-Type": "application/json"},
+body: json.encode(body));
+editingUserId = null;
+}
+
+    nameController.clear();
+    emailController.clear();
+    fetchUsers();
+}
+
+void deleteUser(String id) async {
+await http.delete(Uri.parse("$apiUrl/$id"));
+fetchUsers();
+}
+
+@override
+Widget build(BuildContext context) {
+return Scaffold(
+appBar: AppBar(title: Text("Flutter CRUD API")),
+body: Padding(
+padding: EdgeInsets.all(16.0),
+child: Column(
+children: [
+TextField(
+controller: nameController,
+decoration: InputDecoration(labelText: "Name")),
+TextField(
+controller: emailController,
+decoration: InputDecoration(labelText: "Email")),
+ElevatedButton(
+onPressed: addOrUpdateUser,
+child: Text(editingUserId == null ? "Add User" : "Update User"),
+),
+Expanded(
+child: ListView.builder(
+itemCount: users.length,
+itemBuilder: (context, index) {
+return ListTile(
+title: Text(users[index]["name"]),
+subtitle: Text(users[index]["email"]),
+trailing: Row(
+mainAxisSize: MainAxisSize.min,
+children: [
+IconButton(
+icon: Icon(Icons.edit, color: Colors.blue),
+onPressed: () {
+nameController.text = users[index]["name"];
+emailController.text = users[index]["email"];
+setState(() {
+editingUserId = users[index]["id"];
+});
+},
+),
+IconButton(
+icon: Icon(Icons.delete, color: Colors.red),
+onPressed: () => deleteUser(users[index]["id"]),
+),
+],
+),
+);
+},
+),
+)
+],
+),
+),
+);
+}
+}
